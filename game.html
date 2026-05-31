@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ドクターマリオ風ゲーム</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #1a1a2e;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-family: 'Courier New', monospace;
+  color: #fff;
+  user-select: none;
+}
+h1 {
+  font-size: 28px;
+  letter-spacing: 4px;
+  color: #fff;
+  text-shadow: 0 0 10px #ff4;
+  margin-bottom: 12px;
+}
+#game-wrap {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+#bottle-wrap {
+  position: relative;
+}
+canvas {
+  display: block;
+  border: 4px solid #888;
+  border-top: none;
+  background: #000;
+  image-rendering: pixelated;
+}
+#bottle-top {
+  width: 160px;
+  height: 28px;
+  background: #555;
+  border: 4px solid #888;
+  border-bottom: none;
+  margin: 0 auto;
+  border-radius: 8px 8px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #ccc;
+  letter-spacing: 2px;
+}
+#side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 120px;
+}
+.panel-box {
+  background: #16213e;
+  border: 2px solid #444;
+  padding: 12px;
+  border-radius: 4px;
+}
+.panel-label {
+  font-size: 11px;
+  color: #888;
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+}
+.panel-value {
+  font-size: 26px;
+  font-weight: bold;
+  color: #ff4;
+}
+#next-canvas {
+  display: block;
+  background: #000;
+  border: 2px solid #444;
+  margin-top: 4px;
+}
+#controls-info {
+  font-size: 11px;
+  color: #666;
+  line-height: 1.8;
+}
+#message {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.85);
+  padding: 20px 28px;
+  border: 3px solid #ff4;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: bold;
+  display: none;
+  z-index: 10;
+  min-width: 160px;
+}
+#message .sub {
+  font-size: 12px;
+  color: #aaa;
+  margin-top: 8px;
+}
+#level-select {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+#level-select label { font-size: 13px; color: #aaa; }
+#level-input {
+  width: 52px;
+  background: #000;
+  border: 2px solid #555;
+  color: #ff4;
+  font-size: 16px;
+  font-family: 'Courier New', monospace;
+  padding: 2px 6px;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+<h1>DR. MARIO</h1>
+
+<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">
+  <div id="level-select">
+    <label>LEVEL</label>
+    <input type="number" id="level-input" min="0" max="20" value="0">
+  </div>
+  <button id="start-btn" style="background:#ff4;color:#000;border:none;padding:8px 18px;font-weight:bold;font-size:14px;cursor:pointer;letter-spacing:2px;border-radius:2px;">START</button>
+</div>
+
+<div id="game-wrap">
+  <div id="bottle-wrap">
+    <div id="bottle-top">BOTTLE</div>
+    <canvas id="canvas" width="160" height="320"></canvas>
+    <div id="message">
+      <div id="msg-title"></div>
+      <div class="sub" id="msg-sub"></div>
+    </div>
+  </div>
+
+  <div id="side-panel">
+    <div class="panel-box">
+      <div class="panel-label">SCORE</div>
+      <div class="panel-value" id="score-el">0</div>
+    </div>
+    <div class="panel-box">
+      <div class="panel-label">LEVEL</div>
+      <div class="panel-value" id="level-el">0</div>
+    </div>
+    <div class="panel-box">
+      <div class="panel-label">VIRUS</div>
+      <div class="panel-value" id="virus-el">0</div>
+    </div>
+    <div class="panel-box">
+      <div class="panel-label">NEXT</div>
+      <canvas id="next-canvas" width="64" height="32"></canvas>
+    </div>
+    <div class="panel-box">
+      <div id="controls-info">
+        ← → 移動<br>
+        ↑ / Z 回転<br>
+        ↓ 加速<br>
+        Space 即落下
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const COLS = 8, ROWS = 16;
+const CELL = 20;
+const COLORS = ['R', 'B', 'Y']; // red, blue, yellow
+const COLOR_MAP = { R: '#e74c3c', B: '#3498db', Y: '#f1c40f' };
+const VIRUS_DARK = { R: '#922b21', B: '#1a5276', Y: '#9a7d0a' };
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const nextCanvas = document.getElementById('next-canvas');
+const nctx = nextCanvas.getContext('2d');
+
+let grid = [];       // ROWS x COLS: null or {color, type:'virus'|'pill'|'half'}
+let pill = null;     // current falling pill
+let nextPill = null;
+let score = 0;
+let level = 0;
+let virusCount = 0;
+let gameState = 'idle'; // idle, playing, paused, gameover, clear
+let dropTimer = 0;
+let dropInterval = 500;
+let lastTime = 0;
+let lockDelay = 0;
+let needLock = false;
+let comboChain = 0;
+
+// Pill: two halves, each with color
+// orientation: 0=horizontal(left,right), 1=vertical(top,bottom)
+function makePill() {
+  const c1 = COLORS[Math.floor(Math.random() * 3)];
+  const c2 = COLORS[Math.floor(Math.random() * 3)];
+  return {
+    // position of the "anchor" (left half if horizontal, top half if vertical)
+    col: 3, row: 0,
+    orientation: 0, // 0=H, 1=V
+    colors: [c1, c2]
+  };
+}
+
+function pillCells(p) {
+  // Returns [{row,col,color,end:'a'|'b'}] for both halves
+  if (p.orientation === 0) {
+    return [
+      {row: p.row, col: p.col, color: p.colors[0], end: 'a'},
+      {row: p.row, col: p.col + 1, color: p.colors[1], end: 'b'}
+    ];
+  } else {
+    return [
+      {row: p.row, col: p.col, color: p.colors[0], end: 'a'},
+      {row: p.row + 1, col: p.col, color: p.colors[1], end: 'b'}
+    ];
+  }
+}
+
+function inBounds(row, col) {
+  return row >= 0 && row < ROWS && col >= 0 && col < COLS;
+}
+
+function canPlace(p) {
+  for (const {row, col} of pillCells(p)) {
+    if (!inBounds(row, col)) return false;
+    if (grid[row][col]) return false;
+  }
+  return true;
+}
+
+function lockPill() {
+  for (const {row, col, color, end} of pillCells(pill)) {
+    grid[row][col] = {color, type: 'pill', end};
+  }
+  pill = null;
+}
+
+function rotatePill(p) {
+  const next = {...p, orientation: p.orientation === 0 ? 1 : 0};
+  if (p.orientation === 0) {
+    // H -> V: anchor stays, second cell moves below anchor
+    // Colors stay: [0]=top, [1]=bottom
+  } else {
+    // V -> H: anchor stays, second cell to right
+    // But need to check col+1 is available
+  }
+  if (!canPlace(next)) {
+    // Wall kick
+    const kicks = [-1, 1];
+    for (const dc of kicks) {
+      const kicked = {...next, col: next.col + dc};
+      if (canPlace(kicked)) return kicked;
+    }
+    return p; // can't rotate
+  }
+  return next;
+}
+
+// ── Gravity for disconnected halves ──────────────────
+function applyGravity() {
+  let moved = true;
+  while (moved) {
+    moved = false;
+    // Scan bottom-up
+    for (let r = ROWS - 2; r >= 0; r--) {
+      for (let c = 0; c < COLS; c++) {
+        const cell = grid[r][c];
+        if (!cell) continue;
+        if (cell.type === 'virus') continue;
+
+        // Check if this is a floating single half (pill fragment after match)
+        // or a connected horizontal pair
+        const below = grid[r + 1][c];
+        if (!below) {
+          grid[r + 1][c] = cell;
+          grid[r][c] = null;
+          moved = true;
+        }
+      }
+    }
+  }
+}
+
+// ── Match detection ───────────────────────────────────
+function findMatches() {
+  const toRemove = new Set();
+
+  // Horizontal
+  for (let r = 0; r < ROWS; r++) {
+    let run = 1;
+    for (let c = 1; c <= COLS; c++) {
+      const prev = grid[r][c-1];
+      const curr = c < COLS ? grid[r][c] : null;
+      if (curr && prev && curr.color === prev.color) {
+        run++;
+      } else {
+        if (run >= 4) {
+          for (let k = c - run; k < c; k++) toRemove.add(`${r},${k}`);
+        }
+        run = 1;
+      }
+    }
+  }
+
+  // Vertical
+  for (let c = 0; c < COLS; c++) {
+    let run = 1;
+    for (let r = 1; r <= ROWS; r++) {
+      const prev = grid[r-1][c];
+      const curr = r < ROWS ? grid[r][c] : null;
+      if (curr && prev && curr.color === prev.color) {
+        run++;
+      } else {
+        if (run >= 4) {
+          for (let k = r - run; k < r; k++) toRemove.add(`${k},${c}`);
+        }
+        run = 1;
+      }
+    }
+  }
+
+  return toRemove;
+}
+
+function clearMatches(toRemove) {
+  let virusCleared = 0;
+  for (const key of toRemove) {
+    const [r, c] = key.split(',').map(Number);
+    if (grid[r][c] && grid[r][c].type === 'virus') virusCleared++;
+    grid[r][c] = null;
+  }
+  return virusCleared;
+}
+
+function countScore(matchCount, chain) {
+  const base = [0, 0, 0, 0, 100, 200, 400, 800];
+  const b = matchCount >= base.length ? 1600 : base[matchCount];
+  return b * (chain + 1) * (level + 1);
+}
+
+// ── Virus placement ───────────────────────────────────
+function placeViruses(lv) {
+  const count = 4 + lv * 4;
+  let placed = 0;
+  const attempts = count * 20;
+  for (let i = 0; i < attempts && placed < count; i++) {
+    const r = Math.floor(Math.random() * 10) + 4; // bottom area
+    const c = Math.floor(Math.random() * COLS);
+    if (grid[r][c]) continue;
+    const color = COLORS[Math.floor(Math.random() * 3)];
+    grid[r][c] = {color, type: 'virus'};
+    placed++;
+  }
+  return placed;
+}
+
+// ── Draw ──────────────────────────────────────────────
+function drawCell(context, x, y, cell, w, h) {
+  w = w || CELL; h = h || CELL;
+  const c = COLOR_MAP[cell.color];
+  context.fillStyle = c;
+  context.fillRect(x + 1, y + 1, w - 2, h - 2);
+
+  if (cell.type === 'virus') {
+    // Draw virus face
+    context.fillStyle = VIRUS_DARK[cell.color];
+    context.fillRect(x + 1, y + 1, w - 2, h - 2);
+    context.fillStyle = c;
+    // eyes
+    context.fillRect(x + 4, y + 5, 3, 3);
+    context.fillRect(x + w - 7, y + 5, 3, 3);
+    // mouth
+    context.fillRect(x + 4, y + h - 6, w - 8, 2);
+  } else {
+    // Pill highlight
+    context.fillStyle = 'rgba(255,255,255,0.25)';
+    context.fillRect(x + 2, y + 2, w - 4, 3);
+  }
+}
+
+function drawGrid() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Grid lines
+  ctx.strokeStyle = '#111';
+  ctx.lineWidth = 0.5;
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      ctx.strokeRect(c * CELL, r * CELL, CELL, CELL);
+    }
+  }
+  // Cells
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r][c]) drawCell(ctx, c * CELL, r * CELL, grid[r][c]);
+    }
+  }
+  // Falling pill
+  if (pill) {
+    for (const {row, col, color, end} of pillCells(pill)) {
+      drawCell(ctx, col * CELL, row * CELL, {color, type: 'pill', end});
+    }
+  }
+}
+
+function drawNext() {
+  nctx.clearRect(0, 0, 64, 32);
+  if (!nextPill) return;
+  const cells = pillCells({...nextPill, row: 0, col: 0, orientation: 0});
+  for (const {row, col, color} of cells) {
+    drawCell(nctx, col * CELL + 2, row * CELL + 6, {color, type: 'pill'});
+  }
+}
+
+// ── Game loop ─────────────────────────────────────────
+function initGrid() {
+  grid = Array.from({length: ROWS}, () => Array(COLS).fill(null));
+}
+
+function startGame() {
+  level = parseInt(document.getElementById('level-input').value) || 0;
+  level = Math.max(0, Math.min(20, level));
+  score = 0;
+  dropInterval = Math.max(100, 500 - level * 20);
+  initGrid();
+  virusCount = placeViruses(level);
+  pill = makePill();
+  nextPill = makePill();
+  comboChain = 0;
+  gameState = 'playing';
+  dropTimer = 0;
+  updateHUD();
+  hideMessage();
+  requestAnimationFrame(loop);
+}
+
+function updateHUD() {
+  document.getElementById('score-el').textContent = score;
+  document.getElementById('level-el').textContent = level;
+  document.getElementById('virus-el').textContent = virusCount;
+}
+
+function showMessage(title, sub) {
+  document.getElementById('msg-title').textContent = title;
+  document.getElementById('msg-sub').textContent = sub;
+  document.getElementById('message').style.display = 'block';
+}
+
+function hideMessage() {
+  document.getElementById('message').style.display = 'none';
+}
+
+let resolvePhase = false;
+
+function loop(ts) {
+  if (gameState !== 'playing') return;
+
+  const dt = ts - lastTime;
+  lastTime = ts;
+
+  if (resolvePhase) {
+    // Run match/gravity cycle
+    const matches = findMatches();
+    if (matches.size > 0) {
+      const vc = clearMatches(matches);
+      virusCount -= vc;
+      score += countScore(matches.size, comboChain);
+      comboChain++;
+      updateHUD();
+      applyGravity();
+      drawGrid();
+      if (virusCount <= 0) {
+        gameState = 'clear';
+        showMessage('STAGE CLEAR!', 'Press START for next level');
+        return;
+      }
+      requestAnimationFrame(loop);
+      return;
+    } else {
+      resolvePhase = false;
+      comboChain = 0;
+      // Spawn next pill
+      pill = nextPill;
+      nextPill = makePill();
+      drawNext();
+      if (!canPlace(pill)) {
+        gameState = 'gameover';
+        showMessage('GAME OVER', 'Press START to retry');
+        drawGrid();
+        return;
+      }
+    }
+  }
+
+  dropTimer += dt;
+  if (dropTimer >= dropInterval) {
+    dropTimer = 0;
+    const moved = movePill(0, 1);
+    if (!moved) {
+      lockPill();
+      resolvePhase = true;
+    }
+  }
+
+  drawGrid();
+  requestAnimationFrame(loop);
+}
+
+function movePill(dc, dr) {
+  if (!pill) return false;
+  const next = {...pill, col: pill.col + dc, row: pill.row + dr};
+  if (canPlace(next)) {
+    pill = next;
+    return true;
+  }
+  return false;
+}
+
+function hardDrop() {
+  if (!pill) return;
+  while (movePill(0, 1)) {}
+  lockPill();
+  resolvePhase = true;
+  dropTimer = 0;
+}
+
+// ── Input ─────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (gameState !== 'playing') return;
+  switch (e.code) {
+    case 'ArrowLeft':  e.preventDefault(); movePill(-1, 0); drawGrid(); break;
+    case 'ArrowRight': e.preventDefault(); movePill(1, 0);  drawGrid(); break;
+    case 'ArrowDown':  e.preventDefault(); dropTimer = dropInterval; break;
+    case 'ArrowUp':
+    case 'KeyZ':       e.preventDefault(); pill = rotatePill(pill); drawGrid(); break;
+    case 'Space':      e.preventDefault(); hardDrop(); break;
+  }
+});
+
+document.getElementById('start-btn').addEventListener('click', () => {
+  if (gameState === 'clear') {
+    level = Math.min(20, level + 1);
+    document.getElementById('level-input').value = level;
+  }
+  lastTime = performance.now();
+  startGame();
+});
+
+// Touch/swipe support
+let touchStartX = 0, touchStartY = 0;
+canvas.addEventListener('touchstart', e => {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+}, {passive: true});
+canvas.addEventListener('touchend', e => {
+  if (gameState !== 'playing') return;
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const dy = e.changedTouches[0].clientY - touchStartY;
+  if (Math.abs(dx) > Math.abs(dy)) {
+    if (dx > 20) movePill(1, 0);
+    else if (dx < -20) movePill(-1, 0);
+  } else {
+    if (dy > 20) hardDrop();
+    else if (dy < -20) { pill = rotatePill(pill); }
+  }
+  drawGrid();
+}, {passive: true});
+
+// Initial draw
+initGrid();
+drawGrid();
+showMessage('DR. MARIO', 'SELECT LEVEL & PRESS START');
+</script>
+</body>
+</html>
