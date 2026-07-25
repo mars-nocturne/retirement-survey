@@ -334,6 +334,8 @@
     <button class="filter-btn src-filter-btn" data-src="投稿">投稿のみ</button>
   </div>
 
+  <div id="gasBanner" style="display:none;border:1px solid;padding:8px 16px;font-size:12px;margin-bottom:16px;"></div>
+
   <div class="cards" id="cardsContainer" style="display:none"></div>
   <div id="loadingMsg" style="text-align:center;padding:48px;color:var(--muted);font-size:14px;">データを読み込み中…</div>
 
@@ -396,6 +398,14 @@
 </div>
 
 <script>
+// ======================================================
+// 共有データベース（Google スプレッドシート）連携
+// GAS をデプロイして得た URL を下の '' に貼り付けてください。
+// 空のままなら、投稿はこの端末内（localStorage）のみに保存されます。
+// セットアップ手順は同梱の fukugyo-apps-script.gs を参照。
+// ======================================================
+const GAS_URL = '';
+
 // ── ステータス → CSSクラス対応 ────────────────
 const STATUS_CLASS = {
   '全面OK': 's-ok',
@@ -427,6 +437,7 @@ const seedData = [
 let allData = [];
 let currentFilter = 'all';   // ステータス
 let currentSrc = 'all';      // 情報源
+let gasReady = false;        // 共有DB接続済みか
 const LS_KEY = 'fukugyo_posts_v1';
 
 // ── localStorage 永続化 ─────────────────
@@ -438,10 +449,50 @@ function savePosts(posts) {
   try { localStorage.setItem(LS_KEY, JSON.stringify(posts)); } catch (e) {}
 }
 
-function loadAll() {
-  const posts = loadPosts();
+function showBanner(msg, type) {
+  const el = document.getElementById('gasBanner');
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.style.background = type === 'ok' ? '#e8f5e9' : '#fff8e1';
+  el.style.borderColor = type === 'ok' ? '#4caf50' : '#ffc107';
+  el.style.color = type === 'ok' ? '#2e7d32' : '#7a5c00';
+}
+
+// ── 共有DB（GAS）連携 ────────────────────
+async function fetchRemote() {
+  const res = await fetch(GAS_URL + '?action=get');
+  const json = await res.json();
+  if (json.status !== 'ok') throw new Error(json.message || 'error');
+  return json.data || [];
+}
+
+async function postToSheet(entry) {
+  if (!gasReady) return;
+  try {
+    await fetch(GAS_URL + '?action=post&body=' + encodeURIComponent(JSON.stringify(entry)));
+  } catch (e) { /* オフライン等はlocalStorageに残るので無視 */ }
+}
+
+async function loadAll() {
+  const localPosts = loadPosts();
+  let remote = [];
+  if (GAS_URL) {
+    try {
+      remote = await fetchRemote();
+      gasReady = true;
+      showBanner('✅ 共有データベースと接続中 — 投稿はみんなに共有されます', 'ok');
+    } catch (e) {
+      showBanner('⚠️ 共有DBに接続できませんでした — 投稿はこの端末内に保存されます', 'warn');
+    }
+  } else {
+    showBanner('ℹ️ 共有DB未接続 — 投稿はこの端末内（localStorage）に保存されます', 'warn');
+  }
+  // seed → 端末内投稿 → 共有DB の順にマージ（同一idは後勝ち＝共有DBが正）
   const map = new Map();
-  [...seedData, ...posts].forEach(d => map.set(d.id, d));
+  [...seedData, ...localPosts, ...remote].forEach(d => {
+    d.ts = Number(d.ts) || 0;
+    map.set(d.id, d);
+  });
   allData = [...map.values()].sort((a, b) => (b.ts || 0) - (a.ts || 0));
   applyFilter();
   setLoading(false);
@@ -531,7 +582,7 @@ document.querySelectorAll('.src-filter-btn').forEach(btn => {
   });
 });
 
-function submitEntry() {
+async function submitEntry() {
   const company  = document.getElementById('f-company').value.trim();
   const status   = document.getElementById('f-status').value;
   const industry = document.getElementById('f-industry').value;
@@ -558,12 +609,23 @@ function submitEntry() {
     ts: Date.now(),
   };
 
+  const btn = document.querySelector('.submit-btn');
+  btn.disabled = true;
+  btn.textContent = '保存中…';
+
+  // 端末内に保存（共有DB接続の有無に関わらず残す）
   const posts = loadPosts();
   posts.push(entry);
   savePosts(posts);
 
+  // 共有DBに送信（接続時のみ）
+  await postToSheet(entry);
+
   allData.unshift(entry);
   applyFilter();
+
+  btn.disabled = false;
+  btn.textContent = '投稿する';
 
   ['f-company', 'f-status', 'f-industry', 'f-note', 'f-url'].forEach(id => {
     document.getElementById(id).value = '';
