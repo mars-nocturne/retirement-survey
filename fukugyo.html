@@ -204,6 +204,8 @@
   .src-official { background: #e8f0fe; color: #1a56c4; border: 1px solid #b3c9f7; }
   .src-post     { background: #f3e5f5; color: #7b1fa2; border: 1px solid #e1bee7; }
   .src-year { font-size: 11px; color: var(--muted); border: 1px solid var(--border); padding: 2px 8px; }
+  .src-link { text-decoration: none; color: var(--cond); border-color: var(--cond); }
+  .src-link:hover { background: var(--cond); color: #fff; }
 
   .card-note {
     font-size: 13px;
@@ -252,6 +254,9 @@
   }
   .form-group textarea { resize: vertical; min-height: 70px; }
   .form-full { grid-column: 1 / -1; }
+  .form-check { flex-direction: row; align-items: center; gap: 8px; }
+  .form-check input { width: 16px; height: 16px; flex-shrink: 0; padding: 0; }
+  .form-check label { margin: 0; font-weight: 400; text-transform: none; letter-spacing: 0.02em; line-height: 1.5; cursor: pointer; }
 
   .submit-btn {
     background: var(--ink);
@@ -375,6 +380,14 @@
         <label>ルールの詳細・体験（任意）</label>
         <textarea id="f-note" placeholder="例: 申請すれば競合以外の副業はOKだった／就業規則で全面禁止と明記されていた など"></textarea>
       </div>
+      <div class="form-group form-full form-check">
+        <input type="checkbox" id="f-official">
+        <label for="f-official">この情報は会社が公式に公表している（プレスリリース・就業規則・報道など）※任意</label>
+      </div>
+      <div class="form-group form-full">
+        <label>出典URL（任意）</label>
+        <input type="url" id="f-url" placeholder="例: https://… 公式発表・報道記事のURL">
+      </div>
     </div>
     <button class="submit-btn" onclick="submitEntry()">投稿する</button>
     <div class="success-msg" id="successMsg">✓ 投稿しました。ありがとうございます！</div>
@@ -446,6 +459,15 @@ function esc(s) {
   ));
 }
 
+// http/https のみ許可（javascript: などを弾く）。不正なら null
+function safeUrl(u) {
+  if (!u) return null;
+  try {
+    const p = new URL(u);
+    return (p.protocol === 'http:' || p.protocol === 'https:') ? u : null;
+  } catch (e) { return null; }
+}
+
 function renderCards(data) {
   const container = document.getElementById('cardsContainer');
   if (data.length === 0) {
@@ -466,6 +488,7 @@ function renderCards(data) {
       <div class="card-meta">
         ${srcTag}
         ${d.year ? `<span class="src-year">${esc(d.year)}年 発表</span>` : ''}
+        ${safeUrl(d.url) ? `<a class="src-year src-link" href="${esc(safeUrl(d.url))}" target="_blank" rel="noopener noreferrer">🔗 出典</a>` : ''}
       </div>
       ${d.note ? `<div class="card-note">${esc(d.note)}</div>` : ''}
     </div>`;
@@ -513,17 +536,24 @@ function submitEntry() {
   const status   = document.getElementById('f-status').value;
   const industry = document.getElementById('f-industry').value;
   const note     = document.getElementById('f-note').value.trim();
+  const official = document.getElementById('f-official').checked;
+  const url      = document.getElementById('f-url').value.trim();
 
   if (!company || !status) {
     alert('企業名と副業ポリシーは必須です。');
+    return;
+  }
+  if (url && !safeUrl(url)) {
+    alert('出典URLは http:// または https:// で始まる正しいURLを入力してください。');
     return;
   }
 
   const entry = {
     id: 'u' + Date.now(),
     company, status, industry,
-    source: '投稿',
+    source: official ? '公表' : '投稿',
     year: '',
+    url,
     note,
     ts: Date.now(),
   };
@@ -535,9 +565,10 @@ function submitEntry() {
   allData.unshift(entry);
   applyFilter();
 
-  ['f-company', 'f-status', 'f-industry', 'f-note'].forEach(id => {
+  ['f-company', 'f-status', 'f-industry', 'f-note', 'f-url'].forEach(id => {
     document.getElementById(id).value = '';
   });
+  document.getElementById('f-official').checked = false;
   const msg = document.getElementById('successMsg');
   msg.style.display = 'block';
   setTimeout(() => msg.style.display = 'none', 3000);
