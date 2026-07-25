@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>副業OK？NG？リアル調査</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=BIZ+UDGothic:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1a2e;
+    --paper: #f5f0e8;
+    --accent: #2e7d5b;
+    --gold: #d4a853;
+    --muted: #7a7a8a;
+    --card-bg: #ffffff;
+    --border: #d8d0c4;
+    --ok: #2e7d5b;
+    --cond: #1a7fa0;
+    --apply: #b8860b;
+    --ban: #c0392b;
+    --unknown: #7a7a8a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'BIZ UDGothic', sans-serif;
+    min-height: 100vh;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(0,0,0,0.04) 39px, rgba(0,0,0,0.04) 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(0,0,0,0.02) 39px, rgba(0,0,0,0.02) 40px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 0 16px 60px; }
+
+  header {
+    padding: 36px 0 28px;
+    border-bottom: 3px double var(--border);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+  }
+  .header-mark {
+    width: 48px; height: 48px;
+    background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Noto Serif JP', serif;
+    color: #fff;
+    font-size: 22px;
+    font-weight: 700;
+    flex-shrink: 0;
+    box-shadow: 3px 3px 0 var(--gold);
+  }
+  .header-text h1 {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    line-height: 1.2;
+  }
+  .header-text p {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+    letter-spacing: 0.08em;
+  }
+
+  .nav-link {
+    display: inline-block;
+    font-size: 12px;
+    color: var(--muted);
+    text-decoration: none;
+    margin-bottom: 20px;
+    border-bottom: 1px dotted var(--muted);
+  }
+  .nav-link:hover { color: var(--ink); }
+
+  .disclaimer {
+    background: #fff8e1;
+    border: 1px solid #ffc107;
+    color: #7a5c00;
+    font-size: 12px;
+    line-height: 1.7;
+    padding: 12px 16px;
+    margin-bottom: 24px;
+  }
+  .disclaimer strong { color: #5a4400; }
+
+  .stats-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+  .stat-item {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    padding: 12px 20px;
+    flex: 1; min-width: 130px;
+    text-align: center;
+    box-shadow: 2px 2px 0 var(--border);
+  }
+  .stat-num {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .stat-label { font-size: 11px; color: var(--muted); margin-top: 2px; letter-spacing: 0.06em; }
+
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .filter-label { font-size: 12px; color: var(--muted); font-weight: 700; letter-spacing: 0.06em; }
+  .filter-btn {
+    background: none;
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    font-size: 12px;
+    font-family: 'BIZ UDGothic', sans-serif;
+    cursor: pointer;
+    color: var(--ink);
+    transition: all 0.15s;
+    letter-spacing: 0.04em;
+  }
+  .filter-btn:hover, .filter-btn.active {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+
+  .cards { display: flex; flex-direction: column; gap: 16px; }
+
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--border);
+    padding: 18px 22px;
+    box-shadow: 3px 3px 0 var(--border);
+    animation: fadeIn 0.3s ease;
+  }
+  .card.s-ok      { border-left-color: var(--ok); }
+  .card.s-cond    { border-left-color: var(--cond); }
+  .card.s-apply   { border-left-color: var(--apply); }
+  .card.s-ban     { border-left-color: var(--ban); }
+  .card.s-unknown { border-left-color: var(--unknown); }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+    gap: 12px;
+  }
+  .card-company {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 19px;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+  .card-company .industry {
+    font-family: 'BIZ UDGothic', sans-serif;
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 400;
+    margin-left: 8px;
+  }
+
+  .status-badge {
+    font-size: 13px;
+    font-weight: 700;
+    padding: 5px 12px;
+    white-space: nowrap;
+    color: #fff;
+  }
+  .status-badge.s-ok      { background: var(--ok); }
+  .status-badge.s-cond    { background: var(--cond); }
+  .status-badge.s-apply   { background: var(--apply); }
+  .status-badge.s-ban     { background: var(--ban); }
+  .status-badge.s-unknown { background: var(--unknown); }
+
+  .card-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .src-tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+  .src-official { background: #e8f0fe; color: #1a56c4; border: 1px solid #b3c9f7; }
+  .src-post     { background: #f3e5f5; color: #7b1fa2; border: 1px solid #e1bee7; }
+  .src-year { font-size: 11px; color: var(--muted); border: 1px solid var(--border); padding: 2px 8px; }
+
+  .card-note {
+    font-size: 13px;
+    line-height: 1.7;
+    color: #3a3a4a;
+    border-left: 3px solid var(--gold);
+    padding-left: 12px;
+    margin-top: 8px;
+  }
+
+  .submit-section {
+    margin-top: 40px;
+    border: 2px dashed var(--border);
+    padding: 28px;
+    background: rgba(255,255,255,0.6);
+  }
+  .submit-section h2 {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 18px;
+    margin-bottom: 6px;
+  }
+  .submit-section p { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  @media (max-width: 540px) { .form-grid { grid-template-columns: 1fr; } }
+
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group label { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.06em; }
+  .form-group input, .form-group select, .form-group textarea {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: 'BIZ UDGothic', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    border-color: var(--ink);
+  }
+  .form-group textarea { resize: vertical; min-height: 70px; }
+  .form-full { grid-column: 1 / -1; }
+
+  .submit-btn {
+    background: var(--ink);
+    color: #fff;
+    border: none;
+    padding: 12px 32px;
+    font-size: 14px;
+    font-family: 'BIZ UDGothic', sans-serif;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    box-shadow: 3px 3px 0 var(--accent);
+    transition: all 0.15s;
+  }
+  .submit-btn:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--accent); }
+  .submit-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--accent); }
+
+  .success-msg {
+    display: none;
+    background: #e8f5e9;
+    border: 1px solid #4caf50;
+    padding: 10px 16px;
+    font-size: 13px;
+    color: #2e7d32;
+    margin-top: 12px;
+  }
+
+  .no-results {
+    text-align: center;
+    padding: 48px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="header-mark">副</div>
+    <div class="header-text">
+      <h1>副業OK？NG？リアル調査</h1>
+      <p>会社ごとの副業ポリシーをまとめたデータベース &nbsp;🔗 <span style="color:var(--accent);font-weight:700;">みんなの投稿で更新</span></p>
+    </div>
+  </header>
+
+  <a class="nav-link" href="index.html">← 退職金リアル調査へ</a>
+
+  <div class="disclaimer">
+    ⚠️ 副業の可否は各社の<strong>就業規則</strong>で定められ、部署・雇用形態・時期によって変わります。<br>
+    <span style="background:#e8f0fe;color:#1a56c4;padding:1px 6px;font-weight:700;">公表</span> = 各社の公開情報・報道に基づく参考情報／<span style="background:#f3e5f5;color:#7b1fa2;padding:1px 6px;font-weight:700;">投稿</span> = ユーザーの自己申告です。
+    正確な最新情報は<strong>必ず各社の公式情報・就業規則でご確認ください</strong>。特定企業の「禁止」表示は投稿者個人の申告であり、当サイトの断定ではありません。
+  </div>
+
+  <div class="stats-bar" id="statsBar">
+    <div class="stat-item"><div class="stat-num" id="totalCount">0</div><div class="stat-label">掲載社数</div></div>
+    <div class="stat-item"><div class="stat-num" id="okCount">―</div><div class="stat-label">副業OK系</div></div>
+    <div class="stat-item"><div class="stat-num" id="banCount">―</div><div class="stat-label">原則禁止</div></div>
+    <div class="stat-item"><div class="stat-num" id="postCount">―</div><div class="stat-label">みんなの投稿</div></div>
+  </div>
+
+  <div class="filter-bar">
+    <span class="filter-label">絞り込み：</span>
+    <button class="filter-btn active" data-filter="all">すべて</button>
+    <button class="filter-btn" data-filter="全面OK">全面OK</button>
+    <button class="filter-btn" data-filter="条件付きOK">条件付きOK</button>
+    <button class="filter-btn" data-filter="申請制">申請制</button>
+    <button class="filter-btn" data-filter="原則禁止">原則禁止</button>
+    <button class="filter-btn" data-filter="不明">不明・その他</button>
+  </div>
+  <div class="filter-bar" style="margin-bottom:24px;">
+    <span class="filter-label">情報源：</span>
+    <button class="filter-btn src-filter-btn active" data-src="all">すべて</button>
+    <button class="filter-btn src-filter-btn" data-src="公表">公表のみ</button>
+    <button class="filter-btn src-filter-btn" data-src="投稿">投稿のみ</button>
+  </div>
+
+  <div class="cards" id="cardsContainer" style="display:none"></div>
+  <div id="loadingMsg" style="text-align:center;padding:48px;color:var(--muted);font-size:14px;">データを読み込み中…</div>
+
+  <div class="submit-section">
+    <h2>あなたの会社の副業ルールを投稿する</h2>
+    <p>投稿はこの端末に保存され、リストに追加されます。<strong>断定ではなく「自分の勤務先ではこうだった」という体験</strong>としてお書きください。虚偽・誹謗中傷はお控えください。</p>
+    <div class="form-grid">
+      <div class="form-group form-full">
+        <label>企業名・団体名（必須）</label>
+        <input type="text" id="f-company" placeholder="例: 〇〇株式会社、△△市役所">
+      </div>
+      <div class="form-group">
+        <label>副業ポリシー（必須）</label>
+        <select id="f-status">
+          <option value="">選んでください</option>
+          <option>全面OK</option>
+          <option>条件付きOK</option>
+          <option>申請制</option>
+          <option>原則禁止</option>
+          <option>不明</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>業種</label>
+        <select id="f-industry">
+          <option value="">選んでください</option>
+          <option>IT・通信</option>
+          <option>製造業</option>
+          <option>金融・保険</option>
+          <option>医療・製薬</option>
+          <option>商社・卸</option>
+          <option>小売・流通</option>
+          <option>建設・不動産</option>
+          <option>運輸・物流</option>
+          <option>マスコミ・広告</option>
+          <option>コンサル・士業</option>
+          <option>公務員・団体</option>
+          <option>飲食・サービス</option>
+          <option>教育</option>
+          <option>その他</option>
+        </select>
+      </div>
+      <div class="form-group form-full">
+        <label>ルールの詳細・体験（任意）</label>
+        <textarea id="f-note" placeholder="例: 申請すれば競合以外の副業はOKだった／就業規則で全面禁止と明記されていた など"></textarea>
+      </div>
+    </div>
+    <button class="submit-btn" onclick="submitEntry()">投稿する</button>
+    <div class="success-msg" id="successMsg">✓ 投稿しました。ありがとうございます！</div>
+  </div>
+
+</div>
+
+<script>
+// ── ステータス → CSSクラス対応 ────────────────
+const STATUS_CLASS = {
+  '全面OK': 's-ok',
+  '条件付きOK': 's-cond',
+  '申請制': 's-apply',
+  '原則禁止': 's-ban',
+  '不明': 's-unknown',
+};
+
+// ── 種データ：副業の容認を「公表」している企業（公開情報ベース） ──
+// ※ 各社の公表情報・報道に基づく参考情報。制度は変更の可能性あり。
+const seedData = [
+  { id: 's1',  company: 'サイボウズ',            industry: 'IT・通信',   status: '全面OK',   source: '公表', year: '', note: '「複業（副業）」を認める人事制度で知られ、社員が会社の資産を使わない範囲であれば申請なしで副業できる運用。', ts: 100 },
+  { id: 's2',  company: 'エンファクトリー',       industry: 'IT・通信',   status: '全面OK',   source: '公表', year: '', note: '「専業禁止？！」を掲げ、社員の複業（パラレルワーク）を積極的に推奨していることで知られる。', ts: 99 },
+  { id: 's3',  company: 'ロート製薬',            industry: '医療・製薬', status: '申請制',   source: '公表', year: '2016', note: '「社外チャレンジワーク」として社外での副業を認める制度を導入したと公表。', ts: 98 },
+  { id: 's4',  company: 'ソフトバンク',          industry: 'IT・通信',   status: '申請制',   source: '公表', year: '2017', note: '社員の副業を解禁したと報道・公表（許可・申請を前提とする運用）。', ts: 97 },
+  { id: 's5',  company: 'SBI新生銀行',           industry: '金融・保険', status: '申請制',   source: '公表', year: '2018', note: '（旧・新生銀行）副業・兼業を認める方針を打ち出したと報道・公表。', ts: 96 },
+  { id: 's6',  company: 'みずほフィナンシャルグループ', industry: '金融・保険', status: '申請制', source: '公表', year: '2019', note: '副業・兼業を容認する方針を公表。金融大手として注目された。', ts: 95 },
+  { id: 's7',  company: '花王',                  industry: '製造業',     status: '申請制',   source: '公表', year: '2021', note: '社員の副業を解禁したと報道・公表。', ts: 94 },
+  { id: 's8',  company: 'リクルート',            industry: 'その他',     status: '条件付きOK', source: '公表', year: '', note: '以前から副業を容認する文化で知られる（申請・一定条件あり）。', ts: 93 },
+  { id: 's9',  company: 'コニカミノルタ',         industry: '製造業',     status: '申請制',   source: '公表', year: '', note: '社員の副業・兼業を認める制度を公表。', ts: 92 },
+  { id: 's10', company: 'ライオン',              industry: '製造業',     status: '申請制',   source: '公表', year: '', note: '副業・兼業を容認する方針を公表。', ts: 91 },
+  { id: 's11', company: 'カゴメ',                industry: '製造業',     status: '申請制',   source: '公表', year: '', note: '副業・兼業を容認する方針を公表。', ts: 90 },
+  { id: 's12', company: '丸紅',                  industry: '商社・卸',   status: '申請制',   source: '公表', year: '2018', note: '社員が社外で活動・副業できる仕組みを導入したと公表。', ts: 89 },
+  { id: 's13', company: 'ユニ・チャーム',         industry: '製造業',     status: '申請制',   source: '公表', year: '', note: '副業・兼業を容認する方針を公表。', ts: 88 },
+  { id: 's14', company: '富士通',                industry: 'IT・通信',   status: '申請制',   source: '公表', year: '', note: '社員の副業・兼業を認める方針を公表。', ts: 87 },
+];
+
+let allData = [];
+let currentFilter = 'all';   // ステータス
+let currentSrc = 'all';      // 情報源
+const LS_KEY = 'fukugyo_posts_v1';
+
+// ── localStorage 永続化 ─────────────────
+function loadPosts() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; }
+  catch (e) { return []; }
+}
+function savePosts(posts) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(posts)); } catch (e) {}
+}
+
+function loadAll() {
+  const posts = loadPosts();
+  const map = new Map();
+  [...seedData, ...posts].forEach(d => map.set(d.id, d));
+  allData = [...map.values()].sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  applyFilter();
+  setLoading(false);
+}
+
+// ── UI ────────────────────────────────
+function setLoading(on) {
+  document.getElementById('loadingMsg').style.display = on ? 'block' : 'none';
+  document.getElementById('cardsContainer').style.display = on ? 'none' : 'flex';
+}
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
+function renderCards(data) {
+  const container = document.getElementById('cardsContainer');
+  if (data.length === 0) {
+    container.innerHTML = '<div class="no-results">該当するデータがありません</div>';
+    return;
+  }
+  container.innerHTML = data.map(d => {
+    const cls = STATUS_CLASS[d.status] || 's-unknown';
+    const srcTag = d.source === '公表'
+      ? '<span class="src-tag src-official">公表</span>'
+      : '<span class="src-tag src-post">投稿</span>';
+    return `
+    <div class="card ${cls}">
+      <div class="card-header">
+        <div class="card-company">${esc(d.company)}${d.industry ? `<span class="industry">${esc(d.industry)}</span>` : ''}</div>
+        <div class="status-badge ${cls}">${esc(d.status)}</div>
+      </div>
+      <div class="card-meta">
+        ${srcTag}
+        ${d.year ? `<span class="src-year">${esc(d.year)}年 発表</span>` : ''}
+      </div>
+      ${d.note ? `<div class="card-note">${esc(d.note)}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function updateStats() {
+  const total = allData.length;
+  const okLike = allData.filter(d => ['全面OK', '条件付きOK', '申請制'].includes(d.status)).length;
+  const ban = allData.filter(d => d.status === '原則禁止').length;
+  const posts = allData.filter(d => d.source === '投稿').length;
+  document.getElementById('totalCount').textContent = total;
+  document.getElementById('okCount').textContent = okLike;
+  document.getElementById('banCount').textContent = ban;
+  document.getElementById('postCount').textContent = posts;
+}
+
+function applyFilter() {
+  let filtered = allData;
+  if (currentFilter !== 'all') filtered = filtered.filter(d => d.status === currentFilter);
+  if (currentSrc !== 'all')    filtered = filtered.filter(d => d.source === currentSrc);
+  renderCards(filtered);
+  updateStats();
+}
+
+document.querySelectorAll('.filter-btn:not(.src-filter-btn)').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn:not(.src-filter-btn)').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = btn.dataset.filter;
+    applyFilter();
+  });
+});
+document.querySelectorAll('.src-filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.src-filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentSrc = btn.dataset.src;
+    applyFilter();
+  });
+});
+
+function submitEntry() {
+  const company  = document.getElementById('f-company').value.trim();
+  const status   = document.getElementById('f-status').value;
+  const industry = document.getElementById('f-industry').value;
+  const note     = document.getElementById('f-note').value.trim();
+
+  if (!company || !status) {
+    alert('企業名と副業ポリシーは必須です。');
+    return;
+  }
+
+  const entry = {
+    id: 'u' + Date.now(),
+    company, status, industry,
+    source: '投稿',
+    year: '',
+    note,
+    ts: Date.now(),
+  };
+
+  const posts = loadPosts();
+  posts.push(entry);
+  savePosts(posts);
+
+  allData.unshift(entry);
+  applyFilter();
+
+  ['f-company', 'f-status', 'f-industry', 'f-note'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  const msg = document.getElementById('successMsg');
+  msg.style.display = 'block';
+  setTimeout(() => msg.style.display = 'none', 3000);
+}
+
+// Initial load
+setLoading(true);
+loadAll();
+</script>
+</body>
+</html>
