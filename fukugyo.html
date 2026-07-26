@@ -206,6 +206,7 @@
   .src-year { font-size: 11px; color: var(--muted); border: 1px solid var(--border); padding: 2px 8px; }
   .src-link { text-decoration: none; color: var(--cond); border-color: var(--cond); }
   .src-link:hover { background: var(--cond); color: #fff; }
+  .asof-tag { background: #f0ece4; border-color: transparent; }
 
   .card-note {
     font-size: 13px;
@@ -309,6 +310,7 @@
     ⚠️ 副業の可否は各社の<strong>就業規則</strong>で定められ、部署・雇用形態・時期によって変わります。<br>
     <span style="background:#e8f0fe;color:#1a56c4;padding:1px 6px;font-weight:700;">公表</span> = 各社の公開情報・報道に基づく参考情報／<span style="background:#f3e5f5;color:#7b1fa2;padding:1px 6px;font-weight:700;">投稿</span> = ユーザーの自己申告です。
     正確な最新情報は<strong>必ず各社の公式情報・就業規則でご確認ください</strong>。特定企業の「禁止」表示は投稿者個人の申告であり、当サイトの断定ではありません。
+    各データには <strong>🗓「◯年◯月時点」</strong> を表示しています（公表データは収録時点、投稿はその投稿月）。
   </div>
 
   <div class="stats-bar" id="statsBar">
@@ -510,6 +512,23 @@ function esc(s) {
   ));
 }
 
+// 公表（seed）データの収録時点（このリストをまとめた年月）
+const SEED_ASOF = '2026-07';
+
+// タイムスタンプ(ミリ秒) → 'YYYY-MM'
+function isoMonth(ts) {
+  const dt = new Date(ts);
+  return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0');
+}
+
+// 各データの「いつ時点の情報か」ラベルを作る
+function asOfLabel(d) {
+  let ym = d.asof;                                   // 明示があれば優先
+  if (!ym) ym = (d.ts && d.ts > 1e12) ? isoMonth(d.ts) : SEED_ASOF; // 投稿は投稿月／seedは収録月
+  const parts = String(ym).split('-');
+  return parts[0] + '年' + Number(parts[1] || 1) + '月時点';
+}
+
 // http/https のみ許可（javascript: などを弾く）。不正なら null
 function safeUrl(u) {
   if (!u) return null;
@@ -538,6 +557,7 @@ function renderCards(data) {
       </div>
       <div class="card-meta">
         ${srcTag}
+        <span class="src-year asof-tag">🗓 ${asOfLabel(d)}</span>
         ${d.year ? `<span class="src-year">${esc(d.year)}年 発表</span>` : ''}
         ${safeUrl(d.url) ? `<a class="src-year src-link" href="${esc(safeUrl(d.url))}" target="_blank" rel="noopener noreferrer">🔗 出典</a>` : ''}
       </div>
